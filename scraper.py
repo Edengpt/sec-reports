@@ -5,12 +5,46 @@ from database import report_exists, insert_report, clear_old_reports
 
 # SEC EDGAR full-text search API (EFTS)
 EDGAR_SEARCH_URL = "https://efts.sec.gov/LATEST/search-index"
+EXCHANGE_DATA_URL = "https://www.sec.gov/files/company_tickers_exchange.json"
 
 # SEC requires a User-Agent with contact info
 HEADERS = {
     "User-Agent": "SEC-Reports-Monitor contact@example.com",
     "Accept": "application/json",
 }
+
+# Only include companies from these exchanges
+ALLOWED_EXCHANGES = {"NYSE", "AMEX", "ARCA", "Nasdaq"}
+
+# Cache: CIK -> exchange
+_exchange_cache = {}
+
+
+def load_exchange_data():
+    """Load CIK-to-exchange mapping from SEC."""
+    global _exchange_cache
+    if _exchange_cache:
+        return
+    try:
+        print("Loading exchange data from SEC...")
+        resp = requests.get(EXCHANGE_DATA_URL, headers=HEADERS, timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+        for row in data.get("data", []):
+            cik = str(row[0])
+            exchange = row[3] if len(row) > 3 else None
+            if exchange:
+                _exchange_cache[cik] = exchange
+        print(f"  Loaded {len(_exchange_cache)} companies with exchange info.")
+    except Exception as e:
+        print(f"  Error loading exchange data: {e}")
+
+
+def is_on_allowed_exchange(cik):
+    """Check if a CIK is listed on an allowed exchange."""
+    cik_clean = cik.lstrip("0")
+    exchange = _exchange_cache.get(cik_clean, "")
+    return exchange in ALLOWED_EXCHANGES
 
 # 8-K item number descriptions
 ITEM_DESCRIPTIONS = {
@@ -122,6 +156,7 @@ def process_reports(days_back=1):
     date_from = datetime.now() - timedelta(days=days_back)
     date_to = datetime.now()
 
+    load_exchange_data()
     print(f"Fetching filings from {date_from.date()} to {date_to.date()}...")
 
     total_new = 0
@@ -171,6 +206,12 @@ def process_reports(days_back=1):
                 # Build filing URL
                 ciks = source.get("ciks", [])
                 cik = ciks[0] if ciks else ""
+
+                # Filter: only companies on allowed exchanges
+                if not is_on_allowed_exchange(cik):
+                    total_excluded += 1
+                    continue
+
                 filing_url = build_filing_url(adsh, cik)
 
                 insert_report(
