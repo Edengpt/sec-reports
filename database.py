@@ -18,6 +18,7 @@ def init_db():
             company_name TEXT,
             ticker TEXT,
             title TEXT,
+            category TEXT,
             filing_type TEXT,
             filed_date TEXT,
             url TEXT,
@@ -40,13 +41,14 @@ def insert_report(report):
     conn = get_db()
     conn.execute(
         """INSERT OR IGNORE INTO reports
-           (id, company_name, ticker, title, filing_type, filed_date, url, matched_keywords)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+           (id, company_name, ticker, title, category, filing_type, filed_date, url, matched_keywords)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             report["id"],
             report["company_name"],
             report["ticker"],
             report["title"],
+            report["category"],
             report["filing_type"],
             report["filed_date"],
             report["url"],
@@ -64,7 +66,7 @@ def get_last_report_date():
     return row[0] if row else None
 
 
-def get_all_reports(limit=200):
+def get_all_reports(limit=300):
     conn = get_db()
     rows = conn.execute(
         "SELECT * FROM reports ORDER BY filed_date DESC LIMIT ?", (limit,)

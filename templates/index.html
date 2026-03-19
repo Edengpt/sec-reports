@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>דיווחי SEC - חוזים ועסקאות</title>
+    <title>קטליסטים בבורסה האמריקאית</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -28,7 +28,7 @@
         .controls {
             display: flex;
             gap: 10px;
-            margin-bottom: 20px;
+            margin-bottom: 12px;
             justify-content: center;
             flex-wrap: wrap;
         }
@@ -52,6 +52,26 @@
         .controls button:hover { background: #16213e; }
         .controls button.refresh { background: #e94560; }
         .controls button.refresh:hover { background: #c73e54; }
+        .categories {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 18px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .cat-btn {
+            padding: 6px 14px;
+            border: 2px solid #ddd;
+            border-radius: 20px;
+            background: white;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: 600;
+            color: #333;
+            transition: all 0.2s;
+        }
+        .cat-btn:hover { border-color: #0f3460; color: #0f3460; }
+        .cat-btn.active { background: #0f3460; color: white; border-color: #0f3460; }
         .stats {
             text-align: center;
             margin-bottom: 15px;
@@ -65,8 +85,18 @@
             margin-bottom: 12px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.08);
             transition: box-shadow 0.2s;
+            border-right: 4px solid #ddd;
         }
         .report-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+        .report-card[data-cat="קניות אינסיידרים"] { border-right-color: #27ae60; }
+        .report-card[data-cat="משקיעים אקטיביסטים"] { border-right-color: #e74c3c; }
+        .report-card[data-cat="אישורי FDA"] { border-right-color: #3498db; }
+        .report-card[data-cat="מיזוגים ורכישות"] { border-right-color: #9b59b6; }
+        .report-card[data-cat="חוזים וזכיות"] { border-right-color: #f39c12; }
+        .report-card[data-cat="הסכמים ושיתופי פעולה"] { border-right-color: #1abc9c; }
+        .report-card[data-cat="רכישה עצמית (Buyback)"] { border-right-color: #e67e22; }
+        .report-card[data-cat="הפתעות ברווחים"] { border-right-color: #2ecc71; }
+        .report-card[data-cat="Spinoff / פיצול חברה"] { border-right-color: #8e44ad; }
         .report-header {
             display: flex;
             justify-content: space-between;
@@ -95,16 +125,22 @@
             direction: ltr;
             unicode-bidi: isolate;
         }
-        .filing-type {
+        .category-badge {
             font-size: 0.8em;
             color: #fff;
-            background: #0f3460;
-            padding: 2px 8px;
-            border-radius: 4px;
+            padding: 3px 10px;
+            border-radius: 12px;
             font-weight: 600;
-            direction: ltr;
-            unicode-bidi: isolate;
         }
+        .category-badge[data-cat="קניות אינסיידרים"] { background: #27ae60; }
+        .category-badge[data-cat="משקיעים אקטיביסטים"] { background: #e74c3c; }
+        .category-badge[data-cat="אישורי FDA"] { background: #3498db; }
+        .category-badge[data-cat="מיזוגים ורכישות"] { background: #9b59b6; }
+        .category-badge[data-cat="חוזים וזכיות"] { background: #f39c12; }
+        .category-badge[data-cat="הסכמים ושיתופי פעולה"] { background: #1abc9c; }
+        .category-badge[data-cat="רכישה עצמית (Buyback)"] { background: #e67e22; }
+        .category-badge[data-cat="הפתעות ברווחים"] { background: #2ecc71; }
+        .category-badge[data-cat="Spinoff / פיצול חברה"] { background: #8e44ad; }
         .report-date {
             font-size: 0.85em;
             color: #888;
@@ -156,20 +192,23 @@
 </head>
 <body>
     <div class="container">
-        <h1>דיווחי SEC - חוזים ועסקאות</h1>
-        <p class="subtitle">דיווחים מיידיים מרשות ניירות ערך האמריקאית | חוזים, זכיות, הזמנות והסכמים (8-K)</p>
+        <h1>קטליסטים בבורסה האמריקאית</h1>
+        <p class="subtitle">מעקב אחרי אירועים שמניעים מניות | NYSE, NASDAQ, AMEX, ARCA</p>
 
         <div class="controls">
             <input type="text" id="search" placeholder="חיפוש לפי חברה, טיקר או מילת מפתח..." oninput="filterCards()">
             <button class="refresh" onclick="refreshData()">עדכון עכשיו</button>
         </div>
 
+        <div class="categories" id="categories"></div>
+
         <div class="stats" id="stats"></div>
-        <div id="reports"><div class="loading">טוען דיווחים...</div></div>
+        <div id="reports"><div class="loading">טוען נתונים...</div></div>
     </div>
 
     <script>
         let allReports = [];
+        let activeCategory = null;
 
         async function loadReports() {
             try {
@@ -177,7 +216,8 @@
                 const data = await res.json();
                 allReports = data.reports;
                 document.getElementById('stats').textContent =
-                    `${allReports.length} דיווחים נמצאו | עדכון אחרון: ${data.last_update || 'לא זמין'}`;
+                    `${allReports.length} אירועים נמצאו | עדכון אחרון: ${data.last_update || 'לא זמין'}`;
+                buildCategoryButtons();
                 renderReports(allReports);
             } catch (e) {
                 document.getElementById('reports').innerHTML =
@@ -185,24 +225,44 @@
             }
         }
 
+        function buildCategoryButtons() {
+            const cats = {};
+            allReports.forEach(r => {
+                if (r.category) cats[r.category] = (cats[r.category] || 0) + 1;
+            });
+            const container = document.getElementById('categories');
+            let html = `<button class="cat-btn active" onclick="setCategory(null, this)">הכל (${allReports.length})</button>`;
+            Object.entries(cats).sort((a,b) => b[1] - a[1]).forEach(([cat, count]) => {
+                html += `<button class="cat-btn" onclick="setCategory('${cat}', this)">${cat} (${count})</button>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function setCategory(cat, btn) {
+            activeCategory = cat;
+            document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            filterCards();
+        }
+
         function renderReports(reports) {
             const container = document.getElementById('reports');
             if (!reports.length) {
-                container.innerHTML = '<div class="empty">לא נמצאו דיווחים מתאימים</div>';
+                container.innerHTML = '<div class="empty">לא נמצאו אירועים מתאימים</div>';
                 return;
             }
             container.innerHTML = reports.map(r => {
                 const date = r.filed_date || '';
                 const keywords = r.matched_keywords ? r.matched_keywords.split(', ') : [];
                 const tickerBadge = r.ticker ? `<span class="ticker">${esc(r.ticker)}</span>` : '';
-                const typeBadge = r.filing_type ? `<span class="filing-type">${esc(r.filing_type)}</span>` : '';
+                const catBadge = r.category ? `<span class="category-badge" data-cat="${esc(r.category)}">${esc(r.category)}</span>` : '';
                 return `
-                    <div class="report-card">
+                    <div class="report-card" data-cat="${esc(r.category || '')}">
                         <div class="report-header">
                             <div class="company-info">
                                 <span class="company-name">${esc(r.company_name)}</span>
                                 ${tickerBadge}
-                                ${typeBadge}
+                                ${catBadge}
                             </div>
                             <span class="report-date">${esc(date)}</span>
                         </div>
@@ -218,13 +278,19 @@
 
         function filterCards() {
             const q = document.getElementById('search').value.trim().toLowerCase();
-            if (!q) { renderReports(allReports); return; }
-            const filtered = allReports.filter(r =>
-                (r.company_name || '').toLowerCase().includes(q) ||
-                (r.ticker || '').toLowerCase().includes(q) ||
-                (r.title || '').toLowerCase().includes(q) ||
-                (r.matched_keywords || '').toLowerCase().includes(q)
-            );
+            let filtered = allReports;
+            if (activeCategory) {
+                filtered = filtered.filter(r => r.category === activeCategory);
+            }
+            if (q) {
+                filtered = filtered.filter(r =>
+                    (r.company_name || '').toLowerCase().includes(q) ||
+                    (r.ticker || '').toLowerCase().includes(q) ||
+                    (r.title || '').toLowerCase().includes(q) ||
+                    (r.matched_keywords || '').toLowerCase().includes(q) ||
+                    (r.category || '').includes(q)
+                );
+            }
             renderReports(filtered);
         }
 
