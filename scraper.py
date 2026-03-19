@@ -14,16 +14,16 @@ HEADERS = {
 
 # 8-K item number descriptions
 ITEM_DESCRIPTIONS = {
-    "1.01": "Entry into a Material Definitive Agreement",
-    "1.02": "Termination of a Material Definitive Agreement",
-    "1.03": "Bankruptcy or Receivership",
-    "2.01": "Completion of Acquisition or Disposition of Assets",
-    "2.03": "Creation of a Direct Financial Obligation",
-    "2.05": "Costs Associated with Exit or Disposal Activities",
-    "2.06": "Material Impairments",
-    "7.01": "Regulation FD Disclosure",
-    "8.01": "Other Events",
-    "9.01": "Financial Statements and Exhibits",
+    "1.01": "חתימה על הסכם מהותי",
+    "1.02": "סיום הסכם מהותי",
+    "1.03": "פשיטת רגל או כינוס נכסים",
+    "2.01": "השלמת רכישה או מכירת נכסים",
+    "2.03": "יצירת התחייבות פיננסית ישירה",
+    "2.05": "עלויות הקשורות לפעילות יציאה או סגירה",
+    "2.06": "ירידת ערך מהותית",
+    "7.01": "גילוי לפי רגולציה FD",
+    "8.01": "אירועים נוספים",
+    "9.01": "דוחות כספיים ונספחים",
 }
 
 # Search terms to query EDGAR with
